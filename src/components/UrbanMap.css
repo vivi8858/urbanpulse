@@ -1,0 +1,141 @@
+.urban-map {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+
+.urban-map__canvas {
+  position: relative;
+  flex: 1;
+  min-height: 260px;
+  height: 260px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  overflow: hidden;
+  background: #0c1320;
+}
+
+.urban-map__leaflet {
+  width: 100%;
+  height: 100%;
+  background: #0c1320;
+  font-family: var(--font-sans);
+}
+
+/* Keep Leaflet panes inside the panel */
+.urban-map__leaflet .leaflet-container {
+  width: 100%;
+  height: 100%;
+  font: inherit;
+}
+
+/* Custom severity markers (DivIcon — avoids Vite default-icon path issues) */
+.urban-marker {
+  background: transparent;
+  border: none;
+}
+
+.urban-marker__dot {
+  display: block;
+  width: 14px;
+  height: 14px;
+  margin: 2px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-shadow:
+    0 0 0 2px rgba(10, 15, 26, 0.85),
+    0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+/* Popup content */
+.issue-popup {
+  min-width: 180px;
+  color: #1a2332;
+  font-family: var(--font-sans);
+}
+
+.issue-popup__id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #0d6e68;
+  margin: 0 0 2px;
+}
+
+.issue-popup__type {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0a0f1a;
+  margin: 0 0 10px;
+}
+
+.issue-popup__meta {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.issue-popup__meta > div {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.issue-popup__meta dt {
+  margin: 0;
+  color: #6b7a8f;
+  font-weight: 500;
+}
+
+.issue-popup__meta dd {
+  margin: 0;
+  color: #1a2332;
+  font-weight: 500;
+}
+
+/* Compact Leaflet popup chrome */
+.urban-map__leaflet .leaflet-popup-content-wrapper {
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.urban-map__leaflet .leaflet-popup-content {
+  margin: 12px 14px;
+}
+
+.urban-map__leaflet .leaflet-popup-tip {
+  box-shadow: none;
+}
+
+/* Legend */
+.map-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+}
+
+.map-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.map-legend__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
