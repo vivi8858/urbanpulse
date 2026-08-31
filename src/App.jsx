@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import EdgeAI from "./components/EdgeAI";
 import {
   MapContainer,
   TileLayer,
@@ -280,6 +281,7 @@ function App() {
           {[
             "Dashboard",
             "Live Map",
+            "Edge AI",
             "Urban Issues",
             "Fleet",
             "Priority Queue",
@@ -335,6 +337,9 @@ function App() {
             busPositions={busPositions}
             dynamicIssues={dynamicIssues}
           />
+        )}
+        {activePage === "Edge AI" && (
+            <EdgeAI />
         )}
 
         {activePage === "Urban Issues" && (
