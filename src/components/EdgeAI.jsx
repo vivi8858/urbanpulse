@@ -11,12 +11,13 @@ const ALLOWED_CLASSES = [
   "bicycle",
 ];
 
-function EdgeAI() {
+function EdgeAI({ onSendEvent }) {
   const [model, setModel] = useState(null);
   const [modelStatus, setModelStatus] = useState("Loading AI model...");
   const [imageUrl, setImageUrl] = useState(null);
   const [predictions, setPredictions] = useState([]);
   const [processing, setProcessing] = useState(false);
+  const [eventSent, setEventSent] = useState(false);
 
   const imageRef = useRef(null);
   const canvasRef = useRef(null);
@@ -24,16 +25,11 @@ function EdgeAI() {
   useEffect(() => {
     async function loadModel() {
       try {
-        setModelStatus("Loading Edge AI model...");
-
         const loadedModel = await cocoSsd.load();
-
         setModel(loadedModel);
-
         setModelStatus("Edge AI Ready");
       } catch (error) {
         console.error(error);
-
         setModelStatus("AI model failed to load");
       }
     }
@@ -50,12 +46,14 @@ function EdgeAI() {
 
     setImageUrl(url);
     setPredictions([]);
+    setEventSent(false);
   }
 
   async function runDetection() {
     if (!model || !imageRef.current) return;
 
     setProcessing(true);
+    setEventSent(false);
 
     try {
       const results = await model.detect(imageRef.current);
@@ -67,7 +65,6 @@ function EdgeAI() {
       );
 
       setPredictions(filteredResults);
-
       drawDetections(filteredResults);
     } catch (error) {
       console.error(error);
@@ -110,17 +107,13 @@ function EdgeAI() {
         scaledHeight
       );
 
-      const confidence = Math.round(
-        prediction.score * 100
-      );
+      const confidence = Math.round(prediction.score * 100);
 
-      const label =
-        `${prediction.class} ${confidence}%`;
+      const label = `${prediction.class} ${confidence}%`;
 
       context.font = "13px Arial";
 
-      const textWidth =
-        context.measureText(label).width;
+      const textWidth = context.measureText(label).width;
 
       context.fillStyle = "#07111f";
 
@@ -141,28 +134,20 @@ function EdgeAI() {
     });
   }
 
-  const counts = predictions.reduce(
-    (total, item) => {
-      if (!total[item.class]) {
-        total[item.class] = 0;
-      }
+  const counts = predictions.reduce((total, item) => {
+    if (!total[item.class]) {
+      total[item.class] = 0;
+    }
 
-      total[item.class] += 1;
+    total[item.class] += 1;
 
-      return total;
-    },
-    {}
-  );
+    return total;
+  }, {});
 
-  const vehicleCount = predictions.filter(
-    (item) =>
-      [
-        "car",
-        "bus",
-        "truck",
-        "motorcycle",
-        "bicycle",
-      ].includes(item.class)
+  const vehicleCount = predictions.filter((item) =>
+    ["car", "bus", "truck", "motorcycle", "bicycle"].includes(
+      item.class
+    )
   ).length;
 
   const pedestrianCount = predictions.filter(
@@ -170,51 +155,80 @@ function EdgeAI() {
   ).length;
 
   function getTrafficLevel() {
-    if (vehicleCount >= 8) {
-      return "High";
-    }
-
-    if (vehicleCount >= 4) {
-      return "Medium";
-    }
-
+    if (vehicleCount >= 8) return "High";
+    if (vehicleCount >= 4) return "Medium";
     return "Low";
+  }
+
+  function getAverageConfidence() {
+    if (predictions.length === 0) return 0;
+
+    const total = predictions.reduce(
+      (sum, item) => sum + item.score,
+      0
+    );
+
+    return Math.round((total / predictions.length) * 100);
+  }
+
+  function sendEvent() {
+    if (predictions.length === 0) return;
+
+    const now = new Date();
+
+    const event = {
+      id: `EDGE-${Date.now()}`,
+      type: "Traffic Observation",
+      location: "Connaught Place",
+      latitude: 28.6315,
+      longitude: 77.2167,
+      busId: "BUS-017",
+      timestamp: now.toLocaleTimeString(),
+      confidence: getAverageConfidence(),
+      vehicles: vehicleCount,
+      pedestrians: pedestrianCount,
+      trafficDensity: getTrafficLevel(),
+      status: "New",
+    };
+
+    if (onSendEvent) {
+      onSendEvent(event);
+    }
+
+    setEventSent(true);
   }
 
   return (
     <div className="edge-ai-page">
       <div className="edge-ai-header">
         <div>
-          <p className="eyebrow">
-            ON-DEVICE COMPUTER VISION
-          </p>
+          <p className="eyebrow">ONBOARD / EDGE AI</p>
 
-          <h2>Edge AI Vision Lab</h2>
+          <h2>Bus Intelligence Module</h2>
 
           <p className="edge-ai-description">
-            Upload a road image. The AI model processes
-            the image directly in your browser and detects
-            vehicles and pedestrians.
+            BUS-017 processes the camera frame locally and sends
+            only event intelligence to the central command centre.
           </p>
         </div>
 
-        <div
-          className={`edge-ai-status ${
-            model ? "ready" : ""
-          }`}
-        >
+        <div className={`edge-ai-status ${model ? "ready" : ""}`}>
           <span className="status-dot"></span>
-
           {modelStatus}
         </div>
       </div>
 
+      <div className="edge-device-bar">
+        <EdgeDeviceStatus label="Camera" value="Active" />
+        <EdgeDeviceStatus label="Edge AI" value="Processing Ready" />
+        <EdgeDeviceStatus label="GPS" value="Connected" />
+        <EdgeDeviceStatus label="Network" value="Online" />
+        <EdgeDeviceStatus label="Bus" value="BUS-017" />
+      </div>
+
       <div className="edge-ai-grid">
         <div className="panel edge-upload-panel">
-          <p className="eyebrow">
-            CAMERA INPUT
-          </p>
-
+          <p className="eyebrow">CAMERA INPUT</p>
           <h3>Road Observation</h3>
 
           {!imageUrl && (
@@ -225,13 +239,8 @@ function EdgeAI() {
                 onChange={handleImageUpload}
               />
 
-              <strong>
-                Select Road Image
-              </strong>
-
-              <span>
-                JPG, JPEG or PNG
-              </span>
+              <strong>Select Road Image</strong>
+              <span>JPG, JPEG or PNG</span>
             </label>
           )}
 
@@ -246,12 +255,10 @@ function EdgeAI() {
                   onLoad={() => {
                     setPredictions([]);
 
-                    const canvas =
-                      canvasRef.current;
+                    const canvas = canvasRef.current;
 
                     if (canvas) {
-                      const context =
-                        canvas.getContext("2d");
+                      const context = canvas.getContext("2d");
 
                       context.clearRect(
                         0,
@@ -275,9 +282,7 @@ function EdgeAI() {
                   onClick={runDetection}
                   disabled={!model || processing}
                 >
-                  {processing
-                    ? "Running AI..."
-                    : "Run Edge AI"}
+                  {processing ? "Running AI..." : "Run Edge AI"}
                 </button>
 
                 <label className="secondary-button file-change-button">
@@ -295,122 +300,109 @@ function EdgeAI() {
         </div>
 
         <div className="panel edge-results-panel">
-          <p className="eyebrow">
-            EDGE INFERENCE
-          </p>
-
+          <p className="eyebrow">EDGE INFERENCE</p>
           <h3>Detection Results</h3>
 
           <div className="edge-stats">
-            <EdgeStat
-              label="Vehicles"
-              value={vehicleCount}
-            />
-
-            <EdgeStat
-              label="Pedestrians"
-              value={pedestrianCount}
-            />
-
+            <EdgeStat label="Vehicles" value={vehicleCount} />
+            <EdgeStat label="Pedestrians" value={pedestrianCount} />
             <EdgeStat
               label="Traffic Density"
-              value={
-                predictions.length
-                  ? getTrafficLevel()
-                  : "-"
-              }
+              value={predictions.length ? getTrafficLevel() : "-"}
             />
           </div>
 
           {predictions.length === 0 ? (
             <div className="no-detections">
-              <strong>
-                No inference results yet
-              </strong>
+              <strong>No inference results yet</strong>
 
-              <p>
-                Upload an image and run the Edge AI model.
-              </p>
+              <p>Upload an image and run the Edge AI model.</p>
             </div>
           ) : (
-            <div className="detection-list">
-              {Object.entries(counts).map(
-                ([type, count]) => (
-                  <div
-                    className="detection-row"
-                    key={type}
-                  >
-                    <span>
-                      {formatClassName(type)}
-                    </span>
-
-                    <strong>
-                      {count}
-                    </strong>
+            <>
+              <div className="detection-list">
+                {Object.entries(counts).map(([type, count]) => (
+                  <div className="detection-row" key={type}>
+                    <span>{formatClassName(type)}</span>
+                    <strong>{count}</strong>
                   </div>
-                )
-              )}
-            </div>
-          )}
+                ))}
+              </div>
 
-          {predictions.length > 0 && (
-            <div className="edge-event">
-              <p className="eyebrow">
-                EVENT PAYLOAD
-              </p>
+              <div className="edge-event">
+                <p className="eyebrow">EVENT PAYLOAD</p>
 
-              <pre>
+                <pre>
 {`{
-  "source": "EDGE-AI",
+  "busId": "BUS-017",
+  "gps": "28.6315, 77.2167",
   "vehicles": ${vehicleCount},
   "pedestrians": ${pedestrianCount},
   "trafficDensity": "${getTrafficLevel()}",
-  "detections": ${predictions.length},
+  "confidence": "${getAverageConfidence()}%",
   "rawVideoUploaded": false
 }`}
-              </pre>
-            </div>
+                </pre>
+              </div>
+
+              <button
+                className="send-event-button"
+                onClick={sendEvent}
+                disabled={eventSent}
+              >
+                {eventSent
+                  ? "Event Sent to Command Centre"
+                  : "Send Event to Command Centre"}
+              </button>
+            </>
           )}
         </div>
       </div>
 
       <div className="panel edge-explanation">
-        <p className="eyebrow">
-          WHY THIS IS EDGE AI
-        </p>
+        <p className="eyebrow">BUS → AI → PLATFORM</p>
 
         <div className="edge-flow">
           <FlowStep
             number="1"
-            title="Camera Frame"
-            text="Road image enters the local device."
+            title="Bus Camera"
+            text="Road frame captured from BUS-017."
           />
 
           <FlowArrow />
 
           <FlowStep
             number="2"
-            title="Local AI"
-            text="TensorFlow.js runs inference inside the browser."
+            title="Local Edge AI"
+            text="AI inference runs locally instead of streaming video."
           />
 
           <FlowArrow />
 
           <FlowStep
             number="3"
-            title="Event Metadata"
-            text="Objects, confidence and counts are generated."
+            title="GPS + Timestamp"
+            text="Useful detection metadata is attached."
           />
 
           <FlowArrow />
 
           <FlowStep
             number="4"
-            title="City Platform"
-            text="Only useful intelligence needs to be transmitted."
+            title="Command Centre"
+            text="Only the event is sent to UrbanPulse."
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+function EdgeDeviceStatus({ label, value }) {
+  return (
+    <div className="edge-device-status">
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
@@ -424,34 +416,19 @@ function EdgeStat({ label, value }) {
   );
 }
 
-function FlowStep({
-  number,
-  title,
-  text,
-}) {
+function FlowStep({ number, title, text }) {
   return (
     <div className="edge-flow-step">
-      <div className="edge-step-number">
-        {number}
-      </div>
+      <div className="edge-step-number">{number}</div>
 
-      <strong>
-        {title}
-      </strong>
-
-      <span>
-        {text}
-      </span>
+      <strong>{title}</strong>
+      <span>{text}</span>
     </div>
   );
 }
 
 function FlowArrow() {
-  return (
-    <div className="edge-flow-arrow">
-      →
-    </div>
-  );
+  return <div className="edge-flow-arrow">→</div>;
 }
 
 function formatClassName(name) {
@@ -459,8 +436,7 @@ function formatClassName(name) {
     .split(" ")
     .map(
       (word) =>
-        word.charAt(0).toUpperCase() +
-        word.slice(1)
+        word.charAt(0).toUpperCase() + word.slice(1)
     )
     .join(" ");
 }

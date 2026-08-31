@@ -1458,3 +1458,55 @@ button:disabled {
     text-align: center;
   }
 }
+.edge-device-bar {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.edge-device-status {
+  background: #091525;
+  border: 1px solid #1e293b;
+  border-radius: 7px;
+  padding: 12px;
+}
+
+.edge-device-status span {
+  display: block;
+  color: #64748b;
+  font-size: 10px;
+  margin-bottom: 5px;
+}
+
+.edge-device-status strong {
+  color: #86efac;
+  font-size: 11px;
+}
+
+.send-event-button {
+  width: 100%;
+  margin-top: 16px;
+  padding: 11px;
+  border: none;
+  border-radius: 7px;
+  background: #0f766e;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.send-event-button:hover {
+  background: #0d9488;
+}
+
+.send-event-button:disabled {
+  background: #134e4a;
+  color: #99f6e4;
+}
+
+@media (max-width: 1000px) {
+  .edge-device-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
