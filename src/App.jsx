@@ -1,4 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+} from "react";
 
 import {
   MapContainer,
@@ -18,29 +21,53 @@ const baseIssues = [
     id: "POT-102",
     type: "Large Pothole",
     location: "Connaught Place",
-    position: [28.6315, 77.2167],
+    position: [
+      28.6315,
+      77.2167,
+    ],
     severity: "Medium",
+    busId: "BUS-017",
+    confidence: 76,
   },
+
   {
     id: "WAT-041",
     type: "Waterlogging",
     location: "Mandi House",
-    position: [28.6258, 77.2342],
+    position: [
+      28.6258,
+      77.2342,
+    ],
     severity: "Critical",
+    busId: "BUS-044",
+    confidence: 97,
   },
+
   {
     id: "DIV-018",
     type: "Broken Divider",
     location: "India Gate",
-    position: [28.6129, 77.2295],
+    position: [
+      28.6129,
+      77.2295,
+    ],
     severity: "High",
+    busId: "BUS-006",
+    confidence: 94,
   },
+
   {
     id: "ZEB-011",
-    type: "Faded Zebra Crossing",
+    type:
+      "Faded Zebra Crossing",
     location: "Karol Bagh",
-    position: [28.6519, 77.1909],
+    position: [
+      28.6519,
+      77.1909,
+    ],
     severity: "Medium",
+    busId: "BUS-044",
+    confidence: 91,
   },
 ];
 
@@ -72,7 +99,61 @@ const busRoutes = {
   ],
 };
 
-const confidenceSteps = [76, 91, 98];
+const fleetMeta = {
+  "BUS-017": {
+    route:
+      "Route 101 — Connaught Place",
+    status: "Online",
+    gps: "Active",
+    camera: "Active",
+    edgeAI: "Active",
+    connection: "Online",
+    lastUpdate: "4 sec ago",
+  },
+
+  "BUS-044": {
+    route:
+      "Route 205 — Karol Bagh",
+    status: "Warning",
+    gps: "Active",
+    camera: "Warning",
+    edgeAI: "Active",
+    connection: "Online",
+    lastUpdate: "11 sec ago",
+  },
+
+  "BUS-006": {
+    route:
+      "Route 307 — India Gate",
+    status: "Online",
+    gps: "Active",
+    camera: "Active",
+    edgeAI: "Active",
+    connection: "Online",
+    lastUpdate: "7 sec ago",
+  },
+
+  "BUS-104": {
+    route:
+      "Route 410 — Depot",
+    status: "Offline",
+    gps: "Offline",
+    camera: "Offline",
+    edgeAI: "Offline",
+    connection: "Offline",
+    lastUpdate: "18 min ago",
+    fixedPosition: [
+      28.621,
+      77.195,
+    ],
+  },
+};
+
+const confidenceSteps = [
+  76,
+  91,
+  98,
+];
 
 const deteriorationStages = [
   {
@@ -81,23 +162,22 @@ const deteriorationStages = [
     growth: "Baseline",
     severity: "Medium",
     priority: 48,
-    note: "Initial road defect recorded",
   },
+
   {
     day: "Day 3",
     size: "18 cm",
     growth: "+50%",
     severity: "High",
     priority: 72,
-    note: "Defect expanding",
   },
+
   {
     day: "Day 5",
     size: "27 cm",
     growth: "+125%",
     severity: "Critical",
     priority: 94,
-    note: "Rapid deterioration detected",
   },
 ];
 
@@ -108,225 +188,472 @@ const workflowSteps = [
   "Resolved",
 ];
 
+const alertSteps = [
+  "NEW",
+  "ACKNOWLEDGED",
+  "ASSIGNED",
+  "IN PROGRESS",
+  "RESOLVED",
+];
+
 function App() {
-  const [activePage, setActivePage] = useState("Dashboard");
+  const [
+    activePage,
+    setActivePage,
+  ] =
+    useState("Dashboard");
 
-  const [simulationRunning, setSimulationRunning] = useState(false);
+  const [
+    simulationRunning,
+    setSimulationRunning,
+  ] =
+    useState(false);
 
-  const [busPositions, setBusPositions] = useState({
+  const [
+    busPositions,
+    setBusPositions,
+  ] = useState({
     "BUS-017": 0,
     "BUS-044": 0,
     "BUS-006": 0,
   });
 
-  const [potholeConfidence, setPotholeConfidence] = useState(76);
+  const [
+    potholeConfidence,
+    setPotholeConfidence,
+  ] = useState(76);
 
-  const [potholeBuses, setPotholeBuses] = useState(1);
+  const [
+    potholeBuses,
+    setPotholeBuses,
+  ] = useState(1);
 
-  const [potholeStatus, setPotholeStatus] = useState("Detected");
+  const [
+    potholeStatus,
+    setPotholeStatus,
+  ] =
+    useState("Detected");
 
-  const [deteriorationIndex, setDeteriorationIndex] = useState(0);
+  const [
+    deteriorationIndex,
+    setDeteriorationIndex,
+  ] =
+    useState(0);
 
-  const [workflowIndex, setWorkflowIndex] = useState(0);
+  const [
+    workflowIndex,
+    setWorkflowIndex,
+  ] =
+    useState(0);
 
-  const [assignedOfficer, setAssignedOfficer] =
-    useState("Not assigned");
+  const [
+    assignedOfficer,
+    setAssignedOfficer,
+  ] = useState(
+    "Not assigned"
+  );
 
-  /*
-    NEW:
-    Events received from the Edge AI page are stored here.
-  */
-  const [edgeEvents, setEdgeEvents] = useState([]);
+  const [
+    edgeEvents,
+    setEdgeEvents,
+  ] = useState([]);
 
-  const [activityLog, setActivityLog] = useState([
+  const [
+    alerts,
+    setAlerts,
+  ] = useState([
     {
-      bus: "BUS-017",
-      issue: "Pothole detected",
-      confidence: "76%",
-      time: "Initial detection",
+      id: "ALT-001",
+      type:
+        "Large Pothole",
+      severity: "High",
+      location:
+        "Connaught Place",
+      latitude: 28.6315,
+      longitude: 77.2167,
+      busId: "BUS-017",
+      timestamp:
+        "31 Aug 2026, 10:42 AM",
+      confidence: 94,
+      status: "NEW",
+      evidence: null,
+      description:
+        "Large road defect detected and verified by fleet sensing.",
+    },
+
+    {
+      id: "ALT-002",
+      type:
+        "Waterlogging",
+      severity:
+        "Critical",
+      location:
+        "Mandi House",
+      latitude: 28.6258,
+      longitude: 77.2342,
+      busId: "BUS-044",
+      timestamp:
+        "31 Aug 2026, 10:38 AM",
+      confidence: 97,
+      status:
+        "ACKNOWLEDGED",
+      evidence: null,
+      description:
+        "Standing water detected on active roadway.",
     },
   ]);
 
-  /*
-    BUS MOVEMENT SIMULATION
-  */
+  const [
+    activityLog,
+    setActivityLog,
+  ] = useState([
+    {
+      bus: "BUS-017",
+      issue:
+        "Pothole detected",
+      confidence: "76%",
+      time:
+        "Initial detection",
+    },
+  ]);
+
   useEffect(() => {
-    if (!simulationRunning) return;
-
-    const interval = setInterval(() => {
-      setBusPositions((currentPositions) => {
-        const updatedPositions = {};
-
-        Object.keys(currentPositions).forEach((busId) => {
-          const routeLength = busRoutes[busId].length;
-
-          updatedPositions[busId] =
-            (currentPositions[busId] + 1) % routeLength;
-        });
-
-        return updatedPositions;
-      });
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [simulationRunning]);
-
-  /*
-    FLEET CONSENSUS
-  */
-  useEffect(() => {
-    if (!simulationRunning) return;
-
-    Object.keys(busRoutes).forEach((busId) => {
-      const index = busPositions[busId];
-
-      const position = busRoutes[busId][index];
-
-      const isAtPothole =
-        Math.abs(position[0] - 28.6315) < 0.0001 &&
-        Math.abs(position[1] - 77.2167) < 0.0001;
-
-      if (!isAtPothole) return;
-
-      if (busId === "BUS-044" && potholeBuses < 2) {
-        registerDetection(busId, 2);
-      }
-
-      if (busId === "BUS-006" && potholeBuses < 3) {
-        registerDetection(busId, 3);
-      }
-    });
-  }, [busPositions, simulationRunning, potholeBuses]);
-
-  function registerDetection(busId, busCount) {
-    const newConfidence = confidenceSteps[busCount - 1];
-
-    setPotholeBuses(busCount);
-
-    setPotholeConfidence(newConfidence);
-
-    const newStatus =
-      busCount >= 3 ? "Verified" : "Under Verification";
-
-    setPotholeStatus(newStatus);
-
-    setActivityLog((current) => [
-      {
-        bus: busId,
-
-        issue:
-          busCount >= 3
-            ? "Pothole verified by fleet"
-            : "Same pothole detected",
-
-        confidence: `${newConfidence}%`,
-
-        time: "Just now",
-      },
-
-      ...current,
-    ]);
-  }
-
-  /*
-    NEW:
-    Receive an event from EdgeAI.jsx
-  */
-  function handleEdgeEvent(event) {
-    setEdgeEvents((current) => [
-      event,
-      ...current,
-    ]);
-
-    setActivityLog((current) => [
-      {
-        bus: event.busId,
-
-        issue: `${event.type} sent from Edge AI`,
-
-        confidence: `${event.confidence}%`,
-
-        time: event.timestamp,
-      },
-
-      ...current,
-    ]);
-  }
-
-  /*
-    DETERIORATION
-  */
-  function advanceDeterioration() {
-    setDeteriorationIndex((current) => {
-      if (current >= deteriorationStages.length - 1) {
-        return current;
-      }
-
-      return current + 1;
-    });
-  }
-
-  function resetDeterioration() {
-    setDeteriorationIndex(0);
-  }
-
-  /*
-    AUTHORITY WORKFLOW
-  */
-  function advanceWorkflow() {
-    if (workflowIndex >= workflowSteps.length - 1) {
+    if (
+      !simulationRunning
+    ) {
       return;
     }
 
-    const nextIndex = workflowIndex + 1;
+    const interval =
+      setInterval(() => {
+        setBusPositions(
+          (
+            currentPositions
+          ) => {
+            const updated = {};
 
-    setWorkflowIndex(nextIndex);
+            Object.keys(
+              currentPositions
+            ).forEach(
+              (busId) => {
+                const length =
+                  busRoutes[
+                    busId
+                  ].length;
 
-    const nextStatus = workflowSteps[nextIndex];
+                updated[
+                  busId
+                ] =
+                  (currentPositions[
+                    busId
+                  ] +
+                    1) %
+                  length;
+              }
+            );
 
-    if (nextStatus === "Assigned") {
-      setAssignedOfficer("Maintenance Team A");
+            return updated;
+          }
+        );
+      }, 2000);
+
+    return () =>
+      clearInterval(
+        interval
+      );
+  }, [
+    simulationRunning,
+  ]);
+
+  useEffect(() => {
+    if (
+      !simulationRunning
+    ) {
+      return;
     }
 
-    setActivityLog((current) => [
-      {
-        bus: "AUTHORITY",
+    Object.keys(
+      busRoutes
+    ).forEach(
+      (busId) => {
+        const index =
+          busPositions[
+            busId
+          ];
 
-        issue: `POT-102 status changed to ${nextStatus}`,
+        const position =
+          busRoutes[
+            busId
+          ][index];
 
-        confidence: `${potholeConfidence}%`,
+        const isAtPothole =
+          Math.abs(
+            position[0] -
+              28.6315
+          ) <
+            0.0001 &&
+          Math.abs(
+            position[1] -
+              77.2167
+          ) <
+            0.0001;
 
-        time: "Just now",
-      },
+        if (
+          !isAtPothole
+        ) {
+          return;
+        }
 
-      ...current,
-    ]);
+        if (
+          busId ===
+            "BUS-044" &&
+          potholeBuses <
+            2
+        ) {
+          registerDetection(
+            busId,
+            2
+          );
+        }
+
+        if (
+          busId ===
+            "BUS-006" &&
+          potholeBuses <
+            3
+        ) {
+          registerDetection(
+            busId,
+            3
+          );
+        }
+      }
+    );
+  }, [
+    busPositions,
+    simulationRunning,
+    potholeBuses,
+  ]);
+
+  function registerDetection(
+    busId,
+    busCount
+  ) {
+    const confidence =
+      confidenceSteps[
+        busCount - 1
+      ];
+
+    setPotholeBuses(
+      busCount
+    );
+
+    setPotholeConfidence(
+      confidence
+    );
+
+    setPotholeStatus(
+      busCount >= 3
+        ? "Verified"
+        : "Under Verification"
+    );
+
+    setActivityLog(
+      (current) => [
+        {
+          bus: busId,
+
+          issue:
+            busCount >= 3
+              ? "Pothole verified by fleet"
+              : "Same pothole detected",
+
+          confidence:
+            `${confidence}%`,
+
+          time:
+            "Just now",
+        },
+
+        ...current,
+      ]
+    );
+  }
+
+  function handleEdgeEvent(
+    event
+  ) {
+    setEdgeEvents(
+      (current) => [
+        event,
+        ...current,
+      ]
+    );
+
+    setAlerts(
+      (current) => [
+        {
+          ...event,
+          status: "NEW",
+        },
+
+        ...current,
+      ]
+    );
+
+    setActivityLog(
+      (current) => [
+        {
+          bus:
+            event.busId,
+
+          issue:
+            `${event.type} alert generated`,
+
+          confidence:
+            `${event.confidence}%`,
+
+          time:
+            event.timestamp,
+        },
+
+        ...current,
+      ]
+    );
+  }
+
+  function updateAlertStatus(
+    alertId
+  ) {
+    setAlerts(
+      (current) =>
+        current.map(
+          (alert) => {
+            if (
+              alert.id !==
+              alertId
+            ) {
+              return alert;
+            }
+
+            const currentIndex =
+              alertSteps.indexOf(
+                alert.status
+              );
+
+            if (
+              currentIndex ===
+              alertSteps.length -
+                1
+            ) {
+              return alert;
+            }
+
+            const nextStatus =
+              alertSteps[
+                currentIndex +
+                  1
+              ];
+
+            return {
+              ...alert,
+              status:
+                nextStatus,
+            };
+          }
+        )
+    );
+  }
+
+  function advanceDeterioration() {
+    setDeteriorationIndex(
+      (current) =>
+        Math.min(
+          current + 1,
+          deteriorationStages.length -
+            1
+        )
+    );
+  }
+
+  function resetDeterioration() {
+    setDeteriorationIndex(
+      0
+    );
+  }
+
+  function advanceWorkflow() {
+    if (
+      workflowIndex >=
+      workflowSteps.length -
+        1
+    ) {
+      return;
+    }
+
+    const next =
+      workflowIndex + 1;
+
+    setWorkflowIndex(
+      next
+    );
+
+    if (
+      workflowSteps[
+        next
+      ] === "Assigned"
+    ) {
+      setAssignedOfficer(
+        "Maintenance Team A"
+      );
+    }
   }
 
   function resetWorkflow() {
     setWorkflowIndex(0);
 
-    setAssignedOfficer("Not assigned");
+    setAssignedOfficer(
+      "Not assigned"
+    );
   }
 
   const deterioration =
-    deteriorationStages[deteriorationIndex];
+    deteriorationStages[
+      deteriorationIndex
+    ];
 
   const authorityStatus =
-    workflowSteps[workflowIndex];
+    workflowSteps[
+      workflowIndex
+    ];
 
-  const dynamicIssues = baseIssues.map((issue) => {
-    if (issue.id !== "POT-102") return issue;
+  const dynamicIssues =
+    baseIssues.map(
+      (issue) => {
+        if (
+          issue.id !==
+          "POT-102"
+        ) {
+          return issue;
+        }
 
-    return {
-      ...issue,
+        return {
+          ...issue,
 
-      severity: deterioration.severity,
-    };
-  });
+          severity:
+            deterioration.severity,
+
+          confidence:
+            potholeConfidence,
+        };
+      }
+    );
 
   const verifiedCount =
-    potholeStatus === "Verified" ? 4 : 3;
+    potholeStatus ===
+    "Verified"
+      ? 4
+      : 3;
 
   return (
     <div className="app">
@@ -352,24 +679,53 @@ function App() {
             "Dashboard",
             "Live Map",
             "Edge AI",
+            "Alerts",
             "Urban Issues",
             "Fleet",
             "Priority Queue",
-          ].map((page) => (
-            <button
-              key={page}
-              className={`nav-item ${
-                activePage === page
-                  ? "active"
-                  : ""
-              }`}
-              onClick={() =>
-                setActivePage(page)
-              }
-            >
-              {page}
-            </button>
-          ))}
+          ].map(
+            (page) => (
+              <button
+                key={
+                  page
+                }
+                className={`nav-item ${
+                  activePage ===
+                  page
+                    ? "active"
+                    : ""
+                }`}
+                onClick={() =>
+                  setActivePage(
+                    page
+                  )
+                }
+              >
+                {page}
+
+                {page ===
+                  "Alerts" &&
+                  alerts.filter(
+                    (alert) =>
+                      alert.status !==
+                      "RESOLVED"
+                  ).length >
+                    0 && (
+                    <span className="nav-count">
+                      {
+                        alerts.filter(
+                          (
+                            alert
+                          ) =>
+                            alert.status !==
+                            "RESOLVED"
+                        ).length
+                      }
+                    </span>
+                  )}
+              </button>
+            )
+          )}
         </nav>
 
         <div className="sidebar-bottom">
@@ -384,10 +740,17 @@ function App() {
       </aside>
 
       <main className="main-content">
+        <Header
+          activePage={
+            activePage
+          }
+          alerts={
+            alerts
+          }
+        />
 
-        <Header activePage={activePage} />
-
-        {activePage === "Dashboard" && (
+        {activePage ===
+          "Dashboard" && (
           <DashboardPage
             simulationRunning={
               simulationRunning
@@ -443,13 +806,17 @@ function App() {
             verifiedCount={
               verifiedCount
             }
-            edgeEvents={
-              edgeEvents
+            alerts={
+              alerts
+            }
+            setActivePage={
+              setActivePage
             }
           />
         )}
 
-        {activePage === "Live Map" && (
+        {activePage ===
+          "Live Map" && (
           <LiveMapPage
             simulationRunning={
               simulationRunning
@@ -463,13 +830,14 @@ function App() {
             dynamicIssues={
               dynamicIssues
             }
-            edgeEvents={
-              edgeEvents
+            alerts={
+              alerts
             }
           />
         )}
 
-        {activePage === "Edge AI" && (
+        {activePage ===
+          "Edge AI" && (
           <EdgeAI
             onSendEvent={
               handleEdgeEvent
@@ -477,10 +845,26 @@ function App() {
           />
         )}
 
-        {activePage === "Urban Issues" && (
+        {activePage ===
+          "Alerts" && (
+          <AlertsPage
+            alerts={
+              alerts
+            }
+            updateAlertStatus={
+              updateAlertStatus
+            }
+          />
+        )}
+
+        {activePage ===
+          "Urban Issues" && (
           <UrbanIssuesPage
-            potholeConfidence={
-              potholeConfidence
+            dynamicIssues={
+              dynamicIssues
+            }
+            alerts={
+              alerts
             }
             potholeBuses={
               potholeBuses
@@ -488,16 +872,11 @@ function App() {
             authorityStatus={
               authorityStatus
             }
-            deterioration={
-              deterioration
-            }
-            edgeEvents={
-              edgeEvents
-            }
           />
         )}
 
-        {activePage === "Fleet" && (
+        {activePage ===
+          "Fleet" && (
           <FleetPage
             simulationRunning={
               simulationRunning
@@ -505,10 +884,14 @@ function App() {
             busPositions={
               busPositions
             }
+            alerts={
+              alerts
+            }
           />
         )}
 
-        {activePage === "Priority Queue" && (
+        {activePage ===
+          "Priority Queue" && (
           <PriorityQueuePage
             potholeConfidence={
               potholeConfidence
@@ -524,19 +907,24 @@ function App() {
             }
           />
         )}
-
       </main>
     </div>
   );
 }
 
-/*
-========================================
-HEADER
-========================================
-*/
+function Header({
+  activePage,
+  alerts,
+}) {
+  const critical =
+    alerts.filter(
+      (alert) =>
+        alert.severity ===
+          "Critical" &&
+        alert.status !==
+          "RESOLVED"
+    ).length;
 
-function Header({ activePage }) {
   return (
     <header className="topbar">
       <div>
@@ -553,20 +941,27 @@ function Header({ activePage }) {
         </p>
       </div>
 
-      <div className="system-status">
-        <span className="status-dot"></span>
+      <div className="header-status-area">
+        {critical >
+          0 && (
+          <div className="critical-header-alert">
+            {critical} critical alert
+            {critical >
+            1
+              ? "s"
+              : ""}
+          </div>
+        )}
 
-        System Live
+        <div className="system-status">
+          <span className="status-dot"></span>
+
+          System Live
+        </div>
       </div>
     </header>
   );
 }
-
-/*
-========================================
-DASHBOARD
-========================================
-*/
 
 function DashboardPage({
   simulationRunning,
@@ -587,12 +982,19 @@ function DashboardPage({
   advanceWorkflow,
   resetWorkflow,
   verifiedCount,
-  edgeEvents,
+  alerts,
+  setActivePage,
 }) {
+  const activeAlerts =
+    alerts.filter(
+      (alert) =>
+        alert.status !==
+        "RESOLVED"
+    );
+
   return (
     <>
       <section className="stats-grid">
-
         <StatCard
           title="Active Buses"
           value={
@@ -604,11 +1006,11 @@ function DashboardPage({
         />
 
         <StatCard
-          title="Issues Today"
+          title="Open Alerts"
           value={
-            4 + edgeEvents.length
+            activeAlerts.length
           }
-          description="Detected across city"
+          description="Require attention"
         />
 
         <StatCard
@@ -626,23 +1028,65 @@ function DashboardPage({
           }
           description="POT-102 risk score"
         />
-
       </section>
 
+      {activeAlerts.length >
+        0 && (
+        <section className="dashboard-alert-strip">
+          <div>
+            <span className="alert-strip-label">
+              LIVE ALERT
+            </span>
+
+            <strong>
+              {
+                activeAlerts[0]
+                  .type
+              }
+            </strong>
+
+            <p>
+              {
+                activeAlerts[0]
+                  .location
+              }{" "}
+              ·{" "}
+              {
+                activeAlerts[0]
+                  .busId
+              }{" "}
+              ·{" "}
+              {
+                activeAlerts[0]
+                  .confidence
+              }
+              % confidence
+            </p>
+          </div>
+
+          <button
+            className="secondary-button"
+            onClick={() =>
+              setActivePage(
+                "Alerts"
+              )
+            }
+          >
+            View Alerts
+          </button>
+        </section>
+      )}
+
       <section className="dashboard-grid">
-
         <div className="panel map-panel">
-
           <div className="panel-heading">
-
             <div>
-
               <p className="eyebrow">
                 LIVE INTELLIGENCE
               </p>
 
               <h2>
-                City Observation Map
+                Fleet + Incident Map
               </h2>
 
               <p
@@ -656,7 +1100,6 @@ function DashboardPage({
                   ? "Simulation Running"
                   : "Simulation Offline"}
               </p>
-
             </div>
 
             <button
@@ -671,7 +1114,6 @@ function DashboardPage({
                 ? "Stop Simulation"
                 : "Start Simulation"}
             </button>
-
           </div>
 
           <UrbanMap
@@ -684,15 +1126,13 @@ function DashboardPage({
             simulationRunning={
               simulationRunning
             }
-            edgeEvents={
-              edgeEvents
+            alerts={
+              alerts
             }
           />
-
         </div>
 
         <div className="panel activity-panel">
-
           <p className="eyebrow">
             FLEET CONSENSUS
           </p>
@@ -702,7 +1142,6 @@ function DashboardPage({
           </h2>
 
           <div className="consensus-card">
-
             <p className="consensus-label">
               POT-102 Fleet Confidence
             </p>
@@ -712,14 +1151,13 @@ function DashboardPage({
             </h3>
 
             <div className="confidence-bar">
-
               <div
                 className="confidence-fill"
                 style={{
-                  width: `${potholeConfidence}%`,
+                  width:
+                    `${potholeConfidence}%`,
                 }}
               />
-
             </div>
 
             <p className="consensus-info">
@@ -728,56 +1166,56 @@ function DashboardPage({
 
             <span
               className={`consensus-status ${
-                potholeStatus === "Verified"
+                potholeStatus ===
+                "Verified"
                   ? "verified"
                   : ""
               }`}
             >
               {potholeStatus}
             </span>
-
           </div>
 
           <div className="activity-list">
-
-            {activityLog.map(
-              (activity, index) => (
-                <ActivityItem
-                  key={`${activity.bus}-${index}`}
-                  {...activity}
-                />
-              )
-            )}
-
+            {activityLog
+              .slice(0, 5)
+              .map(
+                (
+                  activity,
+                  index
+                ) => (
+                  <ActivityItem
+                    key={
+                      index
+                    }
+                    {...activity}
+                  />
+                )
+              )}
           </div>
-
         </div>
-
       </section>
 
       <section className="memory-grid">
-
-        <div className="panel memory-panel">
-
+        <div className="panel">
           <p className="eyebrow">
             URBAN DIGITAL MEMORY
           </p>
 
           <h2>
-            POT-102 Deterioration Tracking
+            POT-102 Deterioration
           </h2>
 
           <div className="memory-summary">
-
             <MemoryItem
-              label="Current Stage"
+              label="Stage"
               value={
                 deterioration.day
               }
             />
 
             <MemoryItem
-              label="Estimated Size"
+              label="Size"
               value={
                 deterioration.size
               }
@@ -801,18 +1239,18 @@ function DashboardPage({
               label="Priority"
               value={`${deterioration.priority}/100`}
             />
-
           </div>
 
           <div className="memory-actions">
-
             <button
               className="primary-button"
               onClick={
                 advanceDeterioration
               }
               disabled={
-                deteriorationIndex === 2
+                deteriorationIndex ===
+                deteriorationStages.length -
+                  1
               }
             >
               Simulate Next Observation
@@ -824,84 +1262,64 @@ function DashboardPage({
                 resetDeterioration
               }
             >
-              Reset Timeline
+              Reset
             </button>
-
           </div>
-
         </div>
 
-        <div className="panel priority-engine">
-
+        <div className="panel">
           <p className="eyebrow">
             RISK INTELLIGENCE
           </p>
 
           <h2>
-            Repair Priority Engine
+            Repair Priority
           </h2>
 
           <div className="priority-score">
-
-            {deterioration.priority}
+            {
+              deterioration.priority
+            }
 
             <span>
               /100
             </span>
-
           </div>
 
-          <div className="priority-factors">
+          <Factor
+            label="Damage"
+            value={
+              deterioration.severity
+            }
+          />
 
-            <Factor
-              label="Road Damage"
-              value={
-                deterioration.severity
-              }
-            />
+          <Factor
+            label="Traffic"
+            value="High"
+          />
 
-            <Factor
-              label="Traffic Volume"
-              value="High"
-            />
+          <Factor
+            label="Repeat Sightings"
+            value={`${potholeBuses} buses`}
+          />
 
-            <Factor
-              label="Repeat Sightings"
-              value={`${potholeBuses} buses`}
-            />
-
-            <Factor
-              label="Nearby School"
-              value="180 m"
-            />
-
-            <Factor
-              label="Growth"
-              value={
-                deterioration.growth
-              }
-            />
-
-          </div>
-
+          <Factor
+            label="School Zone"
+            value="180 m"
+          />
         </div>
-
       </section>
 
       <section className="panel authority-panel">
-
         <div className="panel-heading">
-
           <div>
-
             <p className="eyebrow">
               AUTHORITY WORKFLOW
             </p>
 
             <h2>
-              POT-102 Maintenance Action
+              POT-102 Maintenance
             </h2>
-
           </div>
 
           <span
@@ -909,15 +1327,14 @@ function DashboardPage({
               authorityStatus
             )}`}
           >
-            {authorityStatus}
+            {
+              authorityStatus
+            }
           </span>
-
         </div>
 
         <div className="authority-grid">
-
           <div className="authority-details">
-
             <AuthorityRow
               label="Issue"
               value="Large Pothole"
@@ -930,7 +1347,7 @@ function DashboardPage({
 
             <AuthorityRow
               label="Department"
-              value="Road Maintenance Department"
+              value="Road Maintenance"
             />
 
             <AuthorityRow
@@ -939,61 +1356,63 @@ function DashboardPage({
                 assignedOfficer
               }
             />
-
-            <AuthorityRow
-              label="Priority"
-              value={`${deterioration.priority}/100`}
-            />
-
           </div>
 
           <div className="workflow">
-
             {workflowSteps.map(
-              (step, index) => (
+              (
+                step,
+                index
+              ) => (
                 <div
-                  key={step}
+                  key={
+                    step
+                  }
                   className={`workflow-step ${
-                    index <= workflowIndex
+                    index <=
+                    workflowIndex
                       ? "complete"
                       : ""
                   }`}
                 >
-
                   <div className="workflow-circle">
-                    {index + 1}
+                    {
+                      index +
+                      1
+                    }
                   </div>
 
                   <span>
                     {step}
                   </span>
-
                 </div>
               )
             )}
-
           </div>
-
         </div>
 
         <div className="authority-actions">
-
           <button
             className="primary-button"
             onClick={
               advanceWorkflow
             }
             disabled={
-              workflowIndex === 3
+              workflowIndex ===
+              workflowSteps.length -
+                1
             }
           >
-            {workflowIndex === 0
+            {workflowIndex ===
+            0
               ? "Assign Maintenance Team"
-              : workflowIndex === 1
+              : workflowIndex ===
+                1
               ? "Start Repair"
-              : workflowIndex === 2
-              ? "Mark as Resolved"
-              : "Issue Resolved"}
+              : workflowIndex ===
+                2
+              ? "Mark Resolved"
+              : "Resolved"}
           </button>
 
           <button
@@ -1004,42 +1423,267 @@ function DashboardPage({
           >
             Reset Workflow
           </button>
-
         </div>
-
       </section>
     </>
   );
 }
 
-/*
-========================================
-LIVE MAP PAGE
-========================================
-*/
+function AlertsPage({
+  alerts,
+  updateAlertStatus,
+}) {
+  const [
+    filter,
+    setFilter,
+  ] =
+    useState("All");
+
+  const filtered =
+    alerts.filter(
+      (alert) => {
+        if (
+          filter ===
+          "All"
+        ) {
+          return true;
+        }
+
+        return (
+          alert.severity ===
+          filter
+        );
+      }
+    );
+
+  return (
+    <div>
+      <div className="page-section-header">
+        <div>
+          <p className="eyebrow">
+            AI ALERT ENGINE
+          </p>
+
+          <h2>
+            Actionable Alerts
+          </h2>
+
+          <p className="subtitle">
+            AI detections converted into authority-ready incidents.
+          </p>
+        </div>
+
+        <div className="alert-filters">
+          {[
+            "All",
+            "Critical",
+            "High",
+            "Medium",
+            "Low",
+          ].map(
+            (value) => (
+              <button
+                key={
+                  value
+                }
+                className={`filter-button ${
+                  filter ===
+                  value
+                    ? "active"
+                    : ""
+                }`}
+                onClick={() =>
+                  setFilter(
+                    value
+                  )
+                }
+              >
+                {value}
+              </button>
+            )
+          )}
+        </div>
+      </div>
+
+      <div className="alerts-grid">
+        {filtered.map(
+          (alert) => (
+            <AlertCard
+              key={
+                alert.id
+              }
+              alert={
+                alert
+              }
+              onAdvance={() =>
+                updateAlertStatus(
+                  alert.id
+                )
+              }
+            />
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AlertCard({
+  alert,
+  onAdvance,
+}) {
+  const index =
+    alertSteps.indexOf(
+      alert.status
+    );
+
+  return (
+    <article className={`alert-card severity-${alert.severity.toLowerCase()}`}>
+      <div className="alert-card-header">
+        <div>
+          <span className={`alert-severity severity-${alert.severity.toLowerCase()}`}>
+            {
+              alert.severity
+            }
+          </span>
+
+          <h3>
+            {alert.type}
+          </h3>
+        </div>
+
+        <span className="alert-id">
+          {alert.id}
+        </span>
+      </div>
+
+      {alert.evidence && (
+        <div className="alert-evidence">
+          <img
+            src={
+              alert.evidence
+            }
+            alt="AI detection evidence"
+          />
+
+          <span>
+            AI Detection Evidence
+          </span>
+        </div>
+      )}
+
+      <p className="alert-description">
+        {
+          alert.description
+        }
+      </p>
+
+      <div className="alert-details">
+        <AlertDetail
+          label="Location"
+          value={
+            alert.location
+          }
+        />
+
+        <AlertDetail
+          label="GPS"
+          value={`${alert.latitude.toFixed(
+            4
+          )}, ${alert.longitude.toFixed(
+            4
+          )}`}
+        />
+
+        <AlertDetail
+          label="Detected by"
+          value={
+            alert.busId
+          }
+        />
+
+        <AlertDetail
+          label="Timestamp"
+          value={
+            alert.timestamp
+          }
+        />
+
+        <AlertDetail
+          label="AI Confidence"
+          value={`${alert.confidence}%`}
+        />
+      </div>
+
+      <div className="alert-status-flow">
+        {alertSteps.map(
+          (
+            step,
+            stepIndex
+          ) => (
+            <div
+              key={
+                step
+              }
+              className={`alert-flow-step ${
+                stepIndex <=
+                index
+                  ? "active"
+                  : ""
+              }`}
+            >
+              <span></span>
+
+              <small>
+                {step}
+              </small>
+            </div>
+          )
+        )}
+      </div>
+
+      <div className="alert-card-footer">
+        <strong>
+          {alert.status}
+        </strong>
+
+        <button
+          className="primary-button"
+          onClick={
+            onAdvance
+          }
+          disabled={
+            alert.status ===
+            "RESOLVED"
+          }
+        >
+          {getNextAlertAction(
+            alert.status
+          )}
+        </button>
+      </div>
+    </article>
+  );
+}
 
 function LiveMapPage({
   simulationRunning,
   setSimulationRunning,
   busPositions,
   dynamicIssues,
-  edgeEvents,
+  alerts,
 }) {
   return (
     <section className="panel">
-
       <div className="panel-heading">
-
         <div>
-
           <p className="eyebrow">
-            CITY-WIDE OBSERVATION
+            FLEET + INCIDENT INTELLIGENCE
           </p>
 
           <h2>
             Live GIS Map
           </h2>
-
         </div>
 
         <button
@@ -1054,7 +1698,6 @@ function LiveMapPage({
             ? "Stop Simulation"
             : "Start Simulation"}
         </button>
-
       </div>
 
       <UrbanMap
@@ -1068,113 +1711,288 @@ function LiveMapPage({
         simulationRunning={
           simulationRunning
         }
-        edgeEvents={
-          edgeEvents
+        alerts={
+          alerts
         }
       />
 
+      <div className="map-summary">
+        <div>
+          <span>
+            Fleet
+          </span>
+
+          <strong>
+            4 buses
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            Online
+          </span>
+
+          <strong>
+            2
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            Warning
+          </span>
+
+          <strong>
+            1
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            Offline
+          </span>
+
+          <strong>
+            1
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            Open Alerts
+          </span>
+
+          <strong>
+            {
+              alerts.filter(
+                (alert) =>
+                  alert.status !==
+                  "RESOLVED"
+              ).length
+            }
+          </strong>
+        </div>
+      </div>
     </section>
   );
 }
 
-/*
-========================================
-URBAN ISSUES
-========================================
-*/
+function FleetPage({
+  simulationRunning,
+  busPositions,
+  alerts,
+}) {
+  return (
+    <>
+      <div className="page-section-header">
+        <div>
+          <p className="eyebrow">
+            MOBILE SENSOR NETWORK
+          </p>
+
+          <h2>
+            Fleet Monitoring
+          </h2>
+
+          <p className="subtitle">
+            Operational health of every AI-enabled public transport sensing unit.
+          </p>
+        </div>
+      </div>
+
+      <div className="fleet-grid">
+        {Object.entries(
+          fleetMeta
+        ).map(
+          ([
+            busId,
+            meta,
+          ]) => {
+            const hasRoute =
+              !!busRoutes[
+                busId
+              ];
+
+            const position =
+              hasRoute
+                ? busRoutes[
+                    busId
+                  ][
+                    busPositions[
+                      busId
+                    ]
+                  ]
+                : meta.fixedPosition;
+
+            const busAlerts =
+              alerts.filter(
+                (alert) =>
+                  alert.busId ===
+                  busId
+              );
+
+            return (
+              <div
+                className="fleet-card"
+                key={
+                  busId
+                }
+              >
+                <div className="fleet-card-top">
+                  <div>
+                    <strong>
+                      {
+                        busId
+                      }
+                    </strong>
+
+                    <p>
+                      {
+                        meta.route
+                      }
+                    </p>
+                  </div>
+
+                  <StatusBadge
+                    status={
+                      meta.status
+                    }
+                  />
+                </div>
+
+                <div className="fleet-health-grid">
+                  <HealthItem
+                    label="GPS"
+                    value={
+                      meta.gps
+                    }
+                  />
+
+                  <HealthItem
+                    label="Camera"
+                    value={
+                      meta.camera
+                    }
+                  />
+
+                  <HealthItem
+                    label="Edge AI"
+                    value={
+                      meta.edgeAI
+                    }
+                  />
+
+                  <HealthItem
+                    label="Connection"
+                    value={
+                      meta.connection
+                    }
+                  />
+                </div>
+
+                <div className="fleet-location">
+                  <span>
+                    Current GPS
+                  </span>
+
+                  <strong>
+                    {position[0].toFixed(
+                      4
+                    )}
+                    ,{" "}
+                    {position[1].toFixed(
+                      4
+                    )}
+                  </strong>
+                </div>
+
+                <div className="fleet-metrics">
+                  <div>
+                    <span>
+                      Alerts
+                    </span>
+
+                    <strong>
+                      {
+                        busAlerts.length
+                      }
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      High/Critical
+                    </span>
+
+                    <strong>
+                      {
+                        busAlerts.filter(
+                          (
+                            alert
+                          ) =>
+                            [
+                              "High",
+                              "Critical",
+                            ].includes(
+                              alert.severity
+                            )
+                        ).length
+                      }
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      Last Update
+                    </span>
+
+                    <strong>
+                      {
+                        meta.lastUpdate
+                      }
+                    </strong>
+                  </div>
+                </div>
+
+                {busAlerts.length >
+                  0 && (
+                  <div className="fleet-latest-alert">
+                    <span>
+                      Latest Detection
+                    </span>
+
+                    <strong>
+                      {
+                        busAlerts[0]
+                          .type
+                      }
+                    </strong>
+
+                    <small>
+                      {
+                        busAlerts[0]
+                          .location
+                      }
+                    </small>
+                  </div>
+                )}
+              </div>
+            );
+          }
+        )}
+      </div>
+    </>
+  );
+}
 
 function UrbanIssuesPage({
-  potholeConfidence,
+  dynamicIssues,
+  alerts,
   potholeBuses,
   authorityStatus,
-  deterioration,
-  edgeEvents,
 }) {
-  const rows = [
-    {
-      id: "POT-102",
-      issue: "Large Pothole",
-      location: "Connaught Place",
-      severity:
-        deterioration.severity,
-      confidence:
-        `${potholeConfidence}%`,
-      evidence:
-        `${potholeBuses} buses`,
-      status:
-        authorityStatus,
-    },
-
-    {
-      id: "WAT-041",
-      issue: "Waterlogging",
-      location: "Mandi House",
-      severity: "Critical",
-      confidence: "97%",
-      evidence: "6 buses",
-      status: "Verified",
-    },
-
-    {
-      id: "DIV-018",
-      issue: "Broken Divider",
-      location: "India Gate",
-      severity: "High",
-      confidence: "94%",
-      evidence: "3 buses",
-      status: "Verified",
-    },
-
-    {
-      id: "ZEB-011",
-      issue: "Faded Zebra Crossing",
-      location: "Karol Bagh",
-      severity: "Medium",
-      confidence: "91%",
-      evidence: "4 buses",
-      status: "Verified",
-    },
-  ];
-
-  /*
-    Convert Edge AI events into table rows
-  */
-  const edgeRows = edgeEvents.map(
-    (event) => ({
-      id: event.id,
-
-      issue:
-        event.type,
-
-      location:
-        event.location,
-
-      severity:
-        event.trafficDensity === "High"
-          ? "High"
-          : event.trafficDensity === "Medium"
-          ? "Medium"
-          : "Low",
-
-      confidence:
-        `${event.confidence}%`,
-
-      evidence:
-        event.busId,
-
-      status:
-        event.status,
-    })
-  );
-
-  const allRows = [
-    ...edgeRows,
-    ...rows,
-  ];
-
   return (
     <section className="panel">
-
       <p className="eyebrow">
         URBAN ISSUE REGISTER
       </p>
@@ -1184,209 +2002,152 @@ function UrbanIssuesPage({
       </h2>
 
       <div className="table-wrapper">
-
         <table>
-
           <thead>
-
             <tr>
-              <th>ID</th>
-              <th>Issue</th>
-              <th>Location</th>
-              <th>Severity</th>
-              <th>Confidence</th>
-              <th>Fleet / Source</th>
-              <th>Status</th>
-            </tr>
+              <th>
+                ID
+              </th>
 
+              <th>
+                Issue
+              </th>
+
+              <th>
+                Location
+              </th>
+
+              <th>
+                Bus
+              </th>
+
+              <th>
+                Severity
+              </th>
+
+              <th>
+                Confidence
+              </th>
+
+              <th>
+                Status
+              </th>
+            </tr>
           </thead>
 
           <tbody>
-
-            {allRows.map(
-              (row) => (
-                <tr key={row.id}>
-
+            {alerts.map(
+              (alert) => (
+                <tr
+                  key={
+                    alert.id
+                  }
+                >
                   <td>
-                    {row.id}
+                    {
+                      alert.id
+                    }
                   </td>
 
                   <td>
-                    {row.issue}
+                    {
+                      alert.type
+                    }
                   </td>
 
                   <td>
-                    {row.location}
+                    {
+                      alert.location
+                    }
                   </td>
 
                   <td>
-                    {row.severity}
+                    {
+                      alert.busId
+                    }
                   </td>
 
                   <td>
-                    {row.confidence}
+                    {
+                      alert.severity
+                    }
                   </td>
 
                   <td>
-                    {row.evidence}
+                    {
+                      alert.confidence
+                    }
+                    %
                   </td>
 
                   <td>
-                    {row.status}
+                    {
+                      alert.status
+                    }
                   </td>
-
                 </tr>
               )
             )}
 
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </section>
-  );
-}
-
-/*
-========================================
-FLEET PAGE
-========================================
-*/
-
-function FleetPage({
-  simulationRunning,
-  busPositions,
-}) {
-  const buses =
-    Object.keys(busRoutes);
-
-  return (
-    <section className="panel">
-
-      <p className="eyebrow">
-        PUBLIC TRANSPORT SENSOR FLEET
-      </p>
-
-      <h2>
-        Fleet Monitoring
-      </h2>
-
-      <div className="fleet-grid">
-
-        {buses.map((busId) => {
-
-          const position =
-            busRoutes[busId][
-              busPositions[busId]
-            ];
-
-          return (
-            <div
-              className="fleet-card"
-              key={busId}
-            >
-
-              <div className="fleet-card-top">
-
-                <strong>
-                  {busId}
-                </strong>
-
-                <span
-                  className={
-                    simulationRunning
-                      ? "fleet-active"
-                      : "fleet-offline"
+            {dynamicIssues.map(
+              (issue) => (
+                <tr
+                  key={
+                    issue.id
                   }
                 >
-                  {simulationRunning
-                    ? "Active"
-                    : "Stopped"}
-                </span>
+                  <td>
+                    {
+                      issue.id
+                    }
+                  </td>
 
-              </div>
+                  <td>
+                    {
+                      issue.type
+                    }
+                  </td>
 
-              <p>
-                Central Delhi Route
-              </p>
+                  <td>
+                    {
+                      issue.location
+                    }
+                  </td>
 
-              <div className="fleet-data">
+                  <td>
+                    {
+                      issue.busId
+                    }
+                  </td>
 
-                <span>
-                  Camera
-                </span>
+                  <td>
+                    {
+                      issue.severity
+                    }
+                  </td>
 
-                <strong>
-                  Active
-                </strong>
+                  <td>
+                    {
+                      issue.confidence
+                    }
+                    %
+                  </td>
 
-              </div>
-
-              <div className="fleet-data">
-
-                <span>
-                  Edge AI
-                </span>
-
-                <strong>
-                  Online
-                </strong>
-
-              </div>
-
-              <div className="fleet-data">
-
-                <span>
-                  GPS
-                </span>
-
-                <strong>
-                  Connected
-                </strong>
-
-              </div>
-
-              <div className="fleet-data">
-
-                <span>
-                  Latitude
-                </span>
-
-                <strong>
-                  {position[0].toFixed(4)}
-                </strong>
-
-              </div>
-
-              <div className="fleet-data">
-
-                <span>
-                  Longitude
-                </span>
-
-                <strong>
-                  {position[1].toFixed(4)}
-                </strong>
-
-              </div>
-
-            </div>
-          );
-        })}
-
+                  <td>
+                    {issue.id ===
+                    "POT-102"
+                      ? authorityStatus
+                      : "Verified"}
+                  </td>
+                </tr>
+              )
+            )}
+          </tbody>
+        </table>
       </div>
-
     </section>
   );
 }
-
-/*
-========================================
-PRIORITY QUEUE
-========================================
-*/
 
 function PriorityQueuePage({
   potholeConfidence,
@@ -1396,7 +2157,6 @@ function PriorityQueuePage({
 }) {
   return (
     <section className="panel">
-
       <p className="eyebrow">
         DECISION SUPPORT
       </p>
@@ -1406,42 +2166,47 @@ function PriorityQueuePage({
       </h2>
 
       <div className="table-wrapper">
-
         <table>
-
           <thead>
-
             <tr>
-              <th>Priority</th>
-              <th>Issue</th>
-              <th>Location</th>
-              <th>Confidence</th>
-              <th>Fleet Evidence</th>
-              <th>Status</th>
-            </tr>
+              <th>
+                Priority
+              </th>
 
+              <th>
+                Issue
+              </th>
+
+              <th>
+                Location
+              </th>
+
+              <th>
+                Confidence
+              </th>
+
+              <th>
+                Fleet Evidence
+              </th>
+
+              <th>
+                Status
+              </th>
+            </tr>
           </thead>
 
           <tbody>
-
             <tr>
-
               <td>
-
                 <PriorityBadge
                   type={
-                    deterioration.severity ===
-                    "Critical"
-                      ? "critical"
-                      : deterioration.severity ===
-                        "High"
-                      ? "high"
-                      : "medium"
+                    deterioration.severity.toLowerCase()
                   }
                 >
-                  {deterioration.severity}
+                  {
+                    deterioration.severity
+                  }
                 </PriorityBadge>
-
               </td>
 
               <td>
@@ -1453,27 +2218,31 @@ function PriorityQueuePage({
               </td>
 
               <td>
-                {potholeConfidence}%
+                {
+                  potholeConfidence
+                }
+                %
               </td>
 
               <td>
-                {potholeBuses} buses
+                {
+                  potholeBuses
+                }{" "}
+                buses
               </td>
 
               <td>
-                {authorityStatus}
+                {
+                  authorityStatus
+                }
               </td>
-
             </tr>
 
             <tr>
-
               <td>
-
                 <PriorityBadge type="critical">
                   Critical
                 </PriorityBadge>
-
               </td>
 
               <td>
@@ -1495,81 +2264,38 @@ function PriorityQueuePage({
               <td>
                 Verified
               </td>
-
             </tr>
-
-            <tr>
-
-              <td>
-
-                <PriorityBadge type="high">
-                  High
-                </PriorityBadge>
-
-              </td>
-
-              <td>
-                Broken Divider
-              </td>
-
-              <td>
-                India Gate
-              </td>
-
-              <td>
-                94%
-              </td>
-
-              <td>
-                3 buses
-              </td>
-
-              <td>
-                Verified
-              </td>
-
-            </tr>
-
           </tbody>
-
         </table>
-
       </div>
-
     </section>
   );
 }
-
-/*
-========================================
-MAP
-========================================
-*/
 
 function UrbanMap({
   busPositions,
   dynamicIssues,
   simulationRunning,
-  edgeEvents = [],
+  alerts,
   large = false,
 }) {
   return (
     <div className="map-wrapper">
-
       <MapContainer
         center={[
           28.6265,
           77.216,
         ]}
         zoom={13}
-        scrollWheelZoom={true}
+        scrollWheelZoom={
+          true
+        }
         className={`leaflet-map ${
           large
             ? "large-map"
             : ""
         }`}
       >
-
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -1578,11 +2304,13 @@ function UrbanMap({
         {dynamicIssues.map(
           (issue) => (
             <CircleMarker
-              key={issue.id}
+              key={
+                issue.id
+              }
               center={
                 issue.position
               }
-              radius={11}
+              radius={10}
               pathOptions={{
                 color:
                   getSeverityColor(
@@ -1598,156 +2326,239 @@ function UrbanMap({
                   0.85,
               }}
             >
-
               <Popup>
-
                 <strong>
-                  {issue.id}
+                  {
+                    issue.type
+                  }
                 </strong>
 
                 <p>
-                  {issue.type}
+                  ID:{" "}
+                  {
+                    issue.id
+                  }
                 </p>
 
                 <p>
                   Location:{" "}
-                  {issue.location}
+                  {
+                    issue.location
+                  }
                 </p>
 
                 <p>
-                  Severity:{" "}
-                  {issue.severity}
-                </p>
-
-              </Popup>
-
-            </CircleMarker>
-          )
-        )}
-
-        {/*
-          NEW:
-          Edge AI events appear on GIS map.
-        */}
-
-        {edgeEvents.map(
-          (event) => (
-            <CircleMarker
-              key={event.id}
-              center={[
-                event.latitude,
-                event.longitude,
-              ]}
-              radius={9}
-              pathOptions={{
-                color: "#22d3ee",
-                fillColor: "#22d3ee",
-                fillOpacity: 0.9,
-              }}
-            >
-
-              <Popup>
-
-                <strong>
-                  {event.id}
-                </strong>
-
-                <p>
-                  {event.type}
-                </p>
-
-                <p>
-                  Bus: {event.busId}
-                </p>
-
-                <p>
-                  Vehicles:{" "}
-                  {event.vehicles}
-                </p>
-
-                <p>
-                  Pedestrians:{" "}
-                  {event.pedestrians}
-                </p>
-
-                <p>
-                  Traffic:{" "}
-                  {event.trafficDensity}
+                  Source:{" "}
+                  {
+                    issue.busId
+                  }
                 </p>
 
                 <p>
                   Confidence:{" "}
-                  {event.confidence}%
+                  {
+                    issue.confidence
+                  }
+                  %
                 </p>
 
                 <p>
-                  Time:{" "}
-                  {event.timestamp}
+                  Severity:{" "}
+                  {
+                    issue.severity
+                  }
                 </p>
-
               </Popup>
-
             </CircleMarker>
           )
         )}
 
-        {Object.keys(
-          busRoutes
-        ).map((busId) => {
+        {alerts.map(
+          (alert) => (
+            <CircleMarker
+              key={
+                alert.id
+              }
+              center={[
+                alert.latitude,
+                alert.longitude,
+              ]}
+              radius={8}
+              pathOptions={{
+                color:
+                  getSeverityColor(
+                    alert.severity
+                  ),
 
-          const position =
-            busRoutes[busId][
-              busPositions[busId]
-            ];
+                fillColor:
+                  getSeverityColor(
+                    alert.severity
+                  ),
 
-          return (
-            <Marker
-              key={busId}
-              position={position}
+                fillOpacity:
+                  1,
+              }}
             >
-
               <Popup>
-
                 <strong>
-                  {busId}
+                  {
+                    alert.type
+                  }
                 </strong>
 
                 <p>
+                  Alert:{" "}
+                  {
+                    alert.id
+                  }
+                </p>
+
+                <p>
+                  Source Bus:{" "}
+                  {
+                    alert.busId
+                  }
+                </p>
+
+                <p>
+                  {
+                    alert.location
+                  }
+                </p>
+
+                <p>
+                  Confidence:{" "}
+                  {
+                    alert.confidence
+                  }
+                  %
+                </p>
+
+                <p>
                   Status:{" "}
-                  {simulationRunning
-                    ? "Active"
-                    : "Stopped"}
+                  {
+                    alert.status
+                  }
                 </p>
 
                 <p>
-                  Camera: Active
+                  {
+                    alert.timestamp
+                  }
                 </p>
-
-                <p>
-                  Edge AI: Online
-                </p>
-
-                <p>
-                  GPS: Connected
-                </p>
-
               </Popup>
+            </CircleMarker>
+          )
+        )}
 
-            </Marker>
-          );
-        })}
+        {Object.entries(
+          fleetMeta
+        ).map(
+          ([
+            busId,
+            meta,
+          ]) => {
+            const route =
+              busRoutes[
+                busId
+              ];
 
+            const position =
+              route
+                ? route[
+                    busPositions[
+                      busId
+                    ]
+                  ]
+                : meta.fixedPosition;
+
+            return (
+              <Marker
+                key={
+                  busId
+                }
+                position={
+                  position
+                }
+              >
+                <Popup>
+                  <strong>
+                    {
+                      busId
+                    }
+                  </strong>
+
+                  <p>
+                    {
+                      meta.route
+                    }
+                  </p>
+
+                  <p>
+                    Status:{" "}
+                    {
+                      meta.status
+                    }
+                  </p>
+
+                  <p>
+                    GPS:{" "}
+                    {
+                      meta.gps
+                    }
+                  </p>
+
+                  <p>
+                    Camera:{" "}
+                    {
+                      meta.camera
+                    }
+                  </p>
+
+                  <p>
+                    Edge AI:{" "}
+                    {
+                      meta.edgeAI
+                    }
+                  </p>
+
+                  <p>
+                    Connection:{" "}
+                    {
+                      meta.connection
+                    }
+                  </p>
+
+                  <p>
+                    Last update:{" "}
+                    {
+                      meta.lastUpdate
+                    }
+                  </p>
+
+                  <p>
+                    Current alerts:{" "}
+                    {
+                      alerts.filter(
+                        (
+                          alert
+                        ) =>
+                          alert.busId ===
+                          busId &&
+                          alert.status !==
+                            "RESOLVED"
+                      ).length
+                    }
+                  </p>
+                </Popup>
+              </Marker>
+            );
+          }
+        )}
       </MapContainer>
-
     </div>
   );
 }
-
-/*
-========================================
-SMALL COMPONENTS
-========================================
-*/
 
 function StatCard({
   title,
@@ -1756,7 +2567,6 @@ function StatCard({
 }) {
   return (
     <div className="stat-card">
-
       <p>
         {title}
       </p>
@@ -1768,7 +2578,6 @@ function StatCard({
       <span>
         {description}
       </span>
-
     </div>
   );
 }
@@ -1781,13 +2590,11 @@ function ActivityItem({
 }) {
   return (
     <div className="activity">
-
       <div className="activity-icon">
         B
       </div>
 
       <div className="activity-info">
-
         <strong>
           {bus}
         </strong>
@@ -1797,33 +2604,35 @@ function ActivityItem({
         </p>
 
         <div className="activity-meta">
-
           <span>
-            {confidence}
+            {
+              confidence
+            }
           </span>
 
           <span>
             {time}
           </span>
-
         </div>
-
       </div>
-
     </div>
   );
 }
 
-function PriorityBadge({
-  type,
-  children,
+function AlertDetail({
+  label,
+  value,
 }) {
   return (
-    <span
-      className={`priority ${type}`}
-    >
-      {children}
-    </span>
+    <div className="alert-detail-row">
+      <span>
+        {label}
+      </span>
+
+      <strong>
+        {value}
+      </strong>
+    </div>
   );
 }
 
@@ -1833,7 +2642,6 @@ function MemoryItem({
 }) {
   return (
     <div>
-
       <span>
         {label}
       </span>
@@ -1841,7 +2649,6 @@ function MemoryItem({
       <strong>
         {value}
       </strong>
-
     </div>
   );
 }
@@ -1852,7 +2659,6 @@ function Factor({
 }) {
   return (
     <div className="factor-row">
-
       <span>
         {label}
       </span>
@@ -1860,7 +2666,6 @@ function Factor({
       <strong>
         {value}
       </strong>
-
     </div>
   );
 }
@@ -1871,7 +2676,6 @@ function AuthorityRow({
 }) {
   return (
     <div className="authority-row">
-
       <span>
         {label}
       </span>
@@ -1879,22 +2683,65 @@ function AuthorityRow({
       <strong>
         {value}
       </strong>
-
     </div>
   );
 }
 
-/*
-========================================
-HELPERS
-========================================
-*/
+function PriorityBadge({
+  type,
+  children,
+}) {
+  return (
+    <span className={`priority ${type}`}>
+      {children}
+    </span>
+  );
+}
+
+function StatusBadge({
+  status,
+}) {
+  return (
+    <span className={`bus-status bus-${status.toLowerCase()}`}>
+      {status}
+    </span>
+  );
+}
+
+function HealthItem({
+  label,
+  value,
+}) {
+  const state =
+    value ===
+      "Active" ||
+    value ===
+      "Online"
+      ? "healthy"
+      : value ===
+        "Warning"
+      ? "warning"
+      : "offline";
+
+  return (
+    <div className="health-item">
+      <span>
+        {label}
+      </span>
+
+      <strong className={`health-${state}`}>
+        {value}
+      </strong>
+    </div>
+  );
+}
 
 function getSeverityColor(
   severity
 ) {
   if (
-    severity === "Critical"
+    severity ===
+    "Critical"
   ) {
     return "#ef4444";
   }
@@ -1906,19 +2753,21 @@ function getSeverityColor(
   }
 
   if (
-    severity === "Low"
+    severity ===
+    "Medium"
   ) {
-    return "#22c55e";
+    return "#eab308";
   }
 
-  return "#eab308";
+  return "#22c55e";
 }
 
 function getAuthorityClass(
   status
 ) {
   if (
-    status === "Resolved"
+    status ===
+    "Resolved"
   ) {
     return "resolved";
   }
@@ -1931,12 +2780,46 @@ function getAuthorityClass(
   }
 
   if (
-    status === "Assigned"
+    status ===
+    "Assigned"
   ) {
     return "assigned";
   }
 
   return "verified";
+}
+
+function getNextAlertAction(
+  status
+) {
+  if (
+    status === "NEW"
+  ) {
+    return "Acknowledge";
+  }
+
+  if (
+    status ===
+    "ACKNOWLEDGED"
+  ) {
+    return "Assign";
+  }
+
+  if (
+    status ===
+    "ASSIGNED"
+  ) {
+    return "Start Work";
+  }
+
+  if (
+    status ===
+    "IN PROGRESS"
+  ) {
+    return "Resolve";
+  }
+
+  return "Resolved";
 }
 
 export default App;
